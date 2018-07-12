@@ -184,7 +184,7 @@ int main(int argc, char **argv)
     /* set configuration for board */
     memset(&boardconf, 0, sizeof(boardconf));
 
-    boardconf.lorawan_public = true;
+    boardconf.lorawan_public = false;
     boardconf.clksrc = clocksource;
     lgw_board_setconf(boardconf);
 
@@ -276,31 +276,33 @@ int main(int argc, char **argv)
     lgw_rxif_setconf(9, ifconf); /* chain 9: FSK 64kbps, on f1 MHz */
 
     /* set configuration for TX packet */
-    memset(&txpkt, 0, sizeof(txpkt));
-    txpkt.freq_hz = ft;
-    txpkt.tx_mode = IMMEDIATE;
-    txpkt.rf_power = 10;
-    txpkt.modulation = MOD_LORA;
-    txpkt.bandwidth = BW_125KHZ;
-    txpkt.datarate = DR_LORA_SF9;
-    txpkt.coderate = CR_LORA_4_5;
-    strcpy((char *)txpkt.payload, "TX.TEST.LORA.GW.????" );
-    txpkt.size = 20;
-    txpkt.preamble = 6;
-    txpkt.rf_chain = 0;
-/*
-    memset(&txpkt, 0, sizeof(txpkt));
-    txpkt.freq_hz = F_TX;
-    txpkt.tx_mode = IMMEDIATE;
-    txpkt.rf_power = 10;
-    txpkt.modulation = MOD_FSK;
-    txpkt.f_dev = 50;
-    txpkt.datarate = 64000;
-    strcpy((char *)txpkt.payload, "TX.TEST.LORA.GW.????" );
-    txpkt.size = 20;
-    txpkt.preamble = 4;
-    txpkt.rf_chain = 0;
-*/
+    if(ft != 0){
+        memset(&txpkt, 0, sizeof(txpkt));
+        txpkt.freq_hz = ft;
+        txpkt.tx_mode = IMMEDIATE;
+        txpkt.rf_power = 10;
+        txpkt.modulation = MOD_LORA;
+        txpkt.bandwidth = BW_125KHZ;
+        txpkt.datarate = DR_LORA_SF9;
+        txpkt.coderate = CR_LORA_4_5;
+        strcpy((char *)txpkt.payload, "TX.TEST.LORA.GW.????" );
+        txpkt.size = 20;
+        txpkt.preamble = 6;
+        txpkt.rf_chain = 0;
+    /*
+        memset(&txpkt, 0, sizeof(txpkt));
+        txpkt.freq_hz = F_TX;
+        txpkt.tx_mode = IMMEDIATE;
+        txpkt.rf_power = 10;
+        txpkt.modulation = MOD_FSK;
+        txpkt.f_dev = 50;
+        txpkt.datarate = 64000;
+        strcpy((char *)txpkt.payload, "TX.TEST.LORA.GW.????" );
+        txpkt.size = 20;
+        txpkt.preamble = 4;
+        txpkt.rf_chain = 0;
+    */
+    }
 
     /* connect, configure and start the LoRa concentrator */
     i = lgw_start();
@@ -383,24 +385,26 @@ int main(int argc, char **argv)
             }
         }
 
-        /* send a packet every X loop */
-        if (loop_cnt%16 == 0) {
-            /* 32b counter in the payload, big endian */
-            txpkt.payload[16] = 0xff & (tx_cnt >> 24);
-            txpkt.payload[17] = 0xff & (tx_cnt >> 16);
-            txpkt.payload[18] = 0xff & (tx_cnt >> 8);
-            txpkt.payload[19] = 0xff & tx_cnt;
-            i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
-            j = 0;
-            printf("+++\nSending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
-            do {
-                ++j;
-                wait_ms(100);
-                lgw_status(TX_STATUS, &status_var); /* get TX status */
-                printf("%d:", status_var);
-            } while ((status_var != TX_FREE) && (j < 100));
-            ++tx_cnt;
-            printf("\nTX finished\n");
+        if(ft != 0){
+            /* send a packet every X loop */
+            if (loop_cnt%16 == 0) {
+                /* 32b counter in the payload, big endian */
+                txpkt.payload[16] = 0xff & (tx_cnt >> 24);
+                txpkt.payload[17] = 0xff & (tx_cnt >> 16);
+                txpkt.payload[18] = 0xff & (tx_cnt >> 8);
+                txpkt.payload[19] = 0xff & tx_cnt;
+                i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
+                j = 0;
+                printf("+++\nSending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
+                do {
+                    ++j;
+                    wait_ms(100);
+                    lgw_status(TX_STATUS, &status_var); /* get TX status */
+                    printf("%d:", status_var);
+                } while ((status_var != TX_FREE) && (j < 100));
+                ++tx_cnt;
+                printf("\nTX finished\n");
+            }
         }
     }
 

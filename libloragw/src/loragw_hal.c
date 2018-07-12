@@ -1276,6 +1276,23 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->rssi -= RSSI_MULTI_BIAS;
             }
 
+            if(p->snr < 0){
+                float rssi_offset = 0;
+                if(LGW_RADIO_TYPE_SX1257 == rf_radio_type[0]){
+                	p->rssi = (-174 + 50.9691 + 6.0 + p->snr);
+                } else {
+                	p->rssi = (-174 + 50.9691 + 4.0 + p->snr);
+                }
+                if(p->rssi <= -130)
+                    rssi_offset -= 4;
+                if(p->rssi < -132)
+                    rssi_offset -= 1.5;
+
+                p->rssi += rssi_offset;
+
+                if(p->rssi < -142)
+                    p->rssi = -142;
+            }
         } else if (ifmod == IF_FSK_STD) {
             DEBUG_MSG("Note: FSK packet\n");
             switch(stat_fifo & 0x07) {
